@@ -5,13 +5,25 @@ Rails.application.configure do
 
   # Code is not reloaded between requests.
   config.enable_reloading = false
+  config.action_mailer.delivery_method = :mailtrap
 
+  config.action_mailer.mailtrap_settings= {
+  # :user_name => ENV['MAIL_TRAP_USERNAME'],
+  # :password => ENV['MAIL_TRAP_PASSWORD'],
+  # :address => 'live.smtp.mailtrap.io',
+  # :domain => 'aitechsent.net',
+  # :port => '587',
+  # :authentication => :plain,
+
+  # :enable_starttls_auto => true   
+  api_key: 'f17620673c51e537ef268dea49025da8',
+}
   # Eager load code on boot. This eager loads most of Rails and
   # your application in memory, allowing both threaded web servers
   # and those relying on copy on write to perform better.
   # Rake tasks automatically ignore this option for performance.
   config.eager_load = true
-
+  config.active_storage.service = :production
   # Full error reports are disabled and caching is turned on.
   config.consider_all_requests_local = false
   config.action_controller.perform_caching = true
@@ -27,7 +39,7 @@ Rails.application.configure do
   # config.assets.css_compressor = :sass
 
   # Do not fall back to assets pipeline if a precompiled asset is missed.
-  config.assets.compile = false
+  # config.assets.compile = false
   config.active_job.queue_adapter = :sidekiq
 
 
@@ -54,7 +66,6 @@ Rails.application.configure do
   # config.action_dispatch.x_sendfile_header = "X-Accel-Redirect" # for NGINX
 
   # Store uploaded files on the local file system (see config/storage.yml for options).
-  config.active_storage.service = :local
 
   # Mount Action Cable outside main process or domain.
   # config.action_cable.mount_path = nil
@@ -98,9 +109,26 @@ Rails.application.configure do
   # the I18n.default_locale when a translation cannot be found).
   config.i18n.fallbacks = true
 
+  config.action_mailer.asset_host = 'https://aitechs-sas-garbage-solution-backend.onrender.com'
+  config.active_storage.service_url_host = 'https://aitechs-sas-garbage-solution-backend.onrender.com'
+  
+  config.default_url_options = { host: 'aitechs-sas-garbage-solution-backend.onrender.com' }
+
+  #  config.routes.default_url_options[:host] = 'aitechs-sas-garbage-solution-backend.onrender.com'
+  # Rails.application.routes.default_url_options[:host] = 'https://74jp5ccr-5173.uks1.devtunnels.ms/'
+  config.action_cable.url = "wss://aitechs-sas-garbage-solution-backend.onrender.com/cable"
+  config.action_mailer.default_url_options = { host: 'https://aitechs-sas-garbage-solution-backend.onrender.com' }
+
+  config.action_cable.allowed_request_origins = [
+    'http://localhost:5173',
+    'https://aitechs-saas.onrender.com',
+    'https://aitechs-sas-garbage-solution.onrender.com'
+  ]
+
+  config.require_master_key = true
   # Don't log any deprecations.
   config.active_support.report_deprecations = false
-
+  
   # Do not dump schema after migrations.
   config.active_record.dump_schema_after_migration = false
 

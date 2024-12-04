@@ -3,9 +3,10 @@ class Admin < ApplicationRecord
     has_secure_password(validations: false)
     has_secure_token :reset_password_token
     has_one_attached :profile_image
-
-
+    has_many :conversations, counter_cache: true
+acts_as_tenant(:account)
    
+# has_secure_password
     # has_many :prefix_and_digits_for_ticket_numbers, dependent: :destroy
 has_many :credentials
 
@@ -13,26 +14,38 @@ has_many :credentials
 # has_many :messages
 # has_many :chat_rooms, through: :messages
 
-has_many :messages_sent, class_name: 'Message', foreign_key: 'sender_id', dependent: :destroy
-has_many :messages_received, class_name: 'Message', foreign_key: 'receiver_id', dependent: :destroy
+# has_many :messages_sent, class_name: 'Message', foreign_key: 'sender_id', dependent: :destroy
+# has_many :messages_received, class_name: 'Message', foreign_key: 'receiver_id', dependent: :destroy
 
 
 
-encrypts :email, :password,   :fcm_token,  deterministic: true
-enum :role,  [:super_administrator, :store_manager, :customer, :service_provider, :customer_support,  :administrator, :agent]
+# encrypts :email, :password,   :fcm_token,  deterministic: true
+enum :role,  [:super_administrator, :store_manager, :customer, :service_provider,
+ :customer_support,  :administrator, :agent]
+ 
+ has_many :conversations, dependent: :destroy
 
 
 # def skip_password_validation
 #     skip_password_validation == '1' || skip_password_validation == true
 #   end
 
+
+def as_json(options = {})
+super(options).merge(
+  online: online,
+  last_seen: last_seen
+)
+end
+
+
   def skip_password_validation=(value)
     @skip_password_validation = value
   end
 
-def super_administrator_role?
-    role == 'super_administrator'
-end
+# def super_administrator_role?
+#     role == 'super_administrator'
+# end
 
 
 
@@ -69,6 +82,8 @@ def generate_password_reset_token(admin)
     admin.update_column(:reset_password_sent_at, Time.now)
 
 end
+
+
 def reset_password(password, admin)
     admin.update(password: password)
     admin.update(reset_password_token: nil)
@@ -117,7 +132,7 @@ def verify_otp(submitted_otp)
     
     # validates :email,  format: { with: URI::MailTo::EMAIL_REGEXP }, presence: true
     # validate :validate_email_format
-    validates :user_name, uniqueness: true
+    # validates :user_name, uniqueness: true
 
     private
     def validate_email_format

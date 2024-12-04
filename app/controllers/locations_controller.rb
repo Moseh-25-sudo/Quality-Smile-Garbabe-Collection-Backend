@@ -1,12 +1,64 @@
 class LocationsController < ApplicationController
-  before_action :set_location, only: %i[   update destroy ]
+  load_and_authorize_resource
+
 before_action :update_last_activity
 
+# set_current_tenant_through_filter
 
-  load_and_authorize_resource
+  
+#   before_action :set_tenant 
+
+   
+  # def set_tenant
+  #   random_name = "Tenant-#{SecureRandom.hex(4)}"
+  #   @account = Account.find_or_create_by(domain:request.domain, subdomain: request.subdomain, name: random_name)
+      
+  #   set_current_tenant(@account)
+   
+  #  end
+
+
+  # def set_tenant
+  
+  
+  #   @account = Account.find_by(subdomain: request.headers['X-Original-Host'])
+    
+  #   if @account.nil?
+  #     Rails.logger.error "No account found for subdomain: #{request.headers['X-Original-Host']}"
+  #     render json: { error: 'Invalid tenant' }, status: :not_found
+  #     return
+  #   end
+  
+  #   set_current_tenant(@account)
+  # end
+
+  # def set_tenant
+  #   @account = Account.find_or_create_by(subdomain: request.subdomain)
+  
+  #   set_current_tenant(@account)
+  # rescue ActiveRecord::RecordNotFound
+  #   render json: { error: 'Invalid tenant' }, status: :not_found
+  # end
+
+
+
+  # def set_tenant
+  #   if current_user.present? && current_user.account.present?
+  #     set_current_tenant(current_user.account)
+  #   else
+  #     Rails.logger.debug "No tenant or current_user found"
+  #     # Optionally, handle cases where no tenant is set
+  #     raise ActsAsTenant::Errors::NoTenantSet
+  #   end
+  # end
+
+
+  ActsAsTenant.with_tenant(ActsAsTenant.current_tenant) do
+
 
   # GET /locations or /locations.json
   def index
+    
     @locations = Location.all
     render json: @locations
   end
@@ -21,6 +73,9 @@ before_action :update_last_activity
   
 
   def create
+    Rails.logger.info " Debugging Current user: #{current_user.inspect}"
+    Rails.logger.info "Current abilities: #{current_user_ability.inspect}"
+    
     @location = Location.create(location_params)
 
 
@@ -61,6 +116,6 @@ before_action :update_last_activity
       params.require(:location).permit(:location_name, :sub_location, :location_code, :category)
     end
 
-
+  end
 
 end

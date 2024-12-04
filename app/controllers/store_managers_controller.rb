@@ -3,8 +3,8 @@ class StoreManagersController < ApplicationController
   before_action :set_store_manager, only: [:update, :destroy ] 
   # before_action :set_admin, except: %i[  create ]
   
-
-
+# before_action :set_tenant
+# set_current_tenant_through_filter
 
 
 
@@ -12,6 +12,31 @@ class StoreManagersController < ApplicationController
   before_action :update_last_activity, except: [:verify_otp, :logout, :login, :confirm_delivered, :confirm_received] 
   # GET /store_managers or /store_managers.json
 
+
+  # before_action :set_tenant 
+  # set_current_tenant_through_filter
+
+     
+
+
+
+  # def set_tenant
+  #   @account = Account.find_by(subdomain: request.headers['X-Original-Host'])
+  
+  #   set_current_tenant(@account)
+  # rescue ActiveRecord::RecordNotFound
+  #   render json: { error: 'Invalid tenant' }, status: :not_found
+  # end
+
+  # def set_tenant
+  #   if current_user.present? && current_user.account.present?
+  #     set_current_tenant(current_user.account)
+  #   else
+  #     Rails.logger.debug "No tenant or current_user found"
+  #     # Optionally, handle cases where no tenant is set
+  #     raise ActsAsTenant::Errors::NoTenantSet
+  #   end
+  # end
 
 
 
@@ -61,17 +86,40 @@ class StoreManagersController < ApplicationController
 
 
 def  confirm_delivered
-  current_store_manager.update(delivered_bags: true, date_delivered: Time.now.strftime('%Y-%m-%d %I:%M:%S %p'), 
+ confirm_store_manager_delivered = current_store_manager.update(
+  delivered_bags: true, date_delivered: Time.current.strftime('%Y-%m-%d %I:%M:%S %p'), 
 received_bags: false,
 number_of_bags_delivered: params[:number_of_bags_delivered] )
+
+if confirm_store_manager_delivered
+
+  ActionCable.server.broadcast "requests_channel", 
+  {request: StoreManagerSerializer.new(current_store_manager).as_json}
+
+  render json: {message: 'confirmation sucessful'}, status: :ok
+
+else
+  render json: {message: 'failed to confirm'}, status: :unprocessable_entity
+end
 end
 
 
 
 def  confirm_received
-  current_store_manager.update(received_bags: true, date_received: Time.now.strftime('%Y-%m-%d %I:%M:%S %p'),
+  confirm_store_manager_received = current_store_manager.update(received_bags: true,
+   date_received: Time.current.strftime('%Y-%m-%d %I:%M:%S %p'),
   delivered_bags: false,
   number_of_bags_received: params[:number_of_bags_received] )
+
+  if  confirm_store_manager_received
+    
+  ActionCable.server.broadcast "requests_channel", 
+  {request: StoreManagerSerializer.new(current_store_manager).as_json}
+
+  render json: {message: 'confirmation sucessful'}, status: :ok
+  else
+    render json: {message: 'failed to confirm'}, status: :unprocessable_entity
+  end
   end
 
 

@@ -1,10 +1,10 @@
 class StoresController < ApplicationController
-  before_action :set_store, only: %i[ show edit update destroy ]
+  # before_action :set_store, only: %i[ show edit update destroy ]
 # before_action :set_admin, only: %i[ create show edit update destroy ]
 before_action :update_last_activity
-
+# before_action :set_tenant
 load_and_authorize_resource
-
+# set_current_tenant_through_filter
 
 
 
@@ -16,6 +16,36 @@ def update_last_activity
 end
 
 
+
+
+
+# before_action :set_tenant 
+# set_current_tenant_through_filter
+
+   
+
+
+
+# def set_tenant
+#   @account = Account.find_by(subdomain: request.headers['X-Original-Host'])
+
+#   set_current_tenant(@account)
+# rescue ActiveRecord::RecordNotFound
+#   render json: { error: 'Invalid tenant' }, status: :not_found
+# end
+
+
+
+
+# def set_tenant
+#   if current_user.present? && current_user.account.present?
+#     set_current_tenant(current_user.account)
+#   else
+#     Rails.logger.debug "No tenant or current_user found"
+#     # Optionally, handle cases where no tenant is set
+#     raise ActsAsTenant::Errors::NoTenantSet
+#   end
+# end
 
   # GET /stores or /stores.json
   def index
@@ -32,6 +62,8 @@ end
     @store = Store.new(store_params)
   
     if @store.save
+      Rails.logger.info "store info#{@store.inspect}"
+
         @prefix_and_digits = PrefixAndDigitsForStore.first
   
           found_prefix = @prefix_and_digits.prefix

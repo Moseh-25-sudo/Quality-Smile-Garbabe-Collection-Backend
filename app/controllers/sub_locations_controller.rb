@@ -2,11 +2,29 @@ class SubLocationsController < ApplicationController
   before_action :set_sub_location, only: %i[ show edit update destroy ]
 
     before_action :update_last_activity
-
+# before_action :set_tenant
+#     set_current_tenant_through_filter
 
 
 
   load_and_authorize_resource
+
+
+
+  # before_action :set_tenant 
+  # set_current_tenant_through_filter
+
+     
+
+
+
+  def set_tenant
+    @account = Account.find_or_create_by(subdomain: request.headers['X-Original-Host'])
+  
+    set_current_tenant(@account)
+  rescue ActiveRecord::RecordNotFound
+    render json: { error: 'Invalid tenant' }, status: :not_found
+  end
 
 
 

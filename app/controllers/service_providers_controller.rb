@@ -1,11 +1,13 @@
 class ServiceProvidersController < ApplicationController
-  before_action :set_admin, except: [ :login, :verify_otp, :logout, :confirm_collected, :confirm_delivered]
+  # before_action :set_admin, except: [ :login, :verify_otp, :logout, :confirm_collected, :confirm_delivered]
 
 # before_action :authenticate_service_provider, except: [:index, :create, :update, :destroy, :login, :verify_otp ]
-before_action :current_user, only: [:confirm_collected, :confirm_delivered]
+# before_action :current_user, only: [:confirm_collected, :confirm_delivered]
 
 before_action :update_last_activity, except: [:login, :logout, :verify_otp, :confirm_collected, :confirm_delivered] 
 load_and_authorize_resource except: [:login, :logout, :verify_otp, :confirm_collected, :confirm_delivered]
+# before_action :set_tenant 
+# set_current_tenant_through_filter
 
 
   def index
@@ -14,6 +16,23 @@ load_and_authorize_resource except: [:login, :logout, :verify_otp, :confirm_coll
   end
 
 
+     
+def get_current_service_provider
+  if current_service_provider
+    render json: current_service_provider, status: :ok
+  else
+    render json: {error: 'no service provider logged in'}, status: :unauthorized
+  end
+end
+
+
+  # def set_tenant
+  #   @account = Account.find_by(subdomain: request.headers['X-Original-Host'])
+  
+  #   set_current_tenant(@account)
+  # rescue ActiveRecord::RecordNotFound
+  #   render json: { error: 'Invalid tenant' }, status: :not_found
+  # end
 
   def update_last_activity
     if current_user.instance_of?(Admin)
@@ -91,11 +110,14 @@ load_and_authorize_resource except: [:login, :logout, :verify_otp, :confirm_coll
 
 
 
-
-
   def confirm_collected
-    if current_service_provider.update(collected: true, date_collected: Time.now.strftime('%Y-%m-%d %I:%M:%S %p'), delivered: false,
+    if current_service_provider.update(collected: true, date_collected: 
+      Time.current.strftime('%Y-%m-%d %I:%M:%S %p'), delivered: false,
                  ) 
+
+  ActionCable.server.broadcast "requests_channel", 
+  {request: ServiceProviderSerializer.new(current_service_provider).as_json}
+
       render json: { message: 'Bag confirmed successfully.' }, status: :ok
     else
       render json: { error: 'Failed to confirm bag.' }, status: :unprocessable_entity
@@ -109,9 +131,12 @@ load_and_authorize_resource except: [:login, :logout, :verify_otp, :confirm_coll
 
   def confirm_delivered
 
-    if  current_service_provider.update(delivered: true,  date_delivered: Time.now.strftime('%Y-%m-%d %I:%M:%S %p'), collected: false,
+    if  current_service_provider.update(delivered: true,  date_delivered:
+       Time.current.strftime('%Y-%m-%d %I:%M:%S %p'), collected: false,
       )
       
+  ActionCable.server.broadcast "requests_channel", 
+  {request: ServiceProviderSerializer.new(current_service_provider).as_json}
       render json: { message: 'Bag confirmed successfully.', }, status: :ok
     else
       render json: { error: 'Failed to confirm bag.' }, status: :unprocessable_entity
@@ -135,7 +160,7 @@ load_and_authorize_resource except: [:login, :logout, :verify_otp, :confirm_coll
       if @service_provider.save
      
        
-          @prefix_and_digits = PrefixAndDigitsForServiceProvider.first
+          @prefix_and_digits =  ServiceProviderSetting.first
 if  @prefix_and_digits.present?
   found_prefix = @prefix_and_digits.prefix
   found_digits = @prefix_and_digits.minimum_digits.to_i
@@ -372,7 +397,8 @@ end
   end
 
     def service_provider_params
-      params.require(:service_provider).permit(:phone_number, :name, :email, :provider_code, :status, :date_registered, :location)
+      params.require(:service_provider).permit(:phone_number, :name, 
+      :email, :provider_code, :status, :date_registered, :location)
     end
 
 

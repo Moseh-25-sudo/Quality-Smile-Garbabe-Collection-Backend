@@ -3,6 +3,42 @@ class SmsController < ApplicationController
 before_action :update_last_activity
 
 
+
+
+
+
+
+
+# before_action :set_tenant 
+# set_current_tenant_through_filter
+
+   
+
+
+
+# def set_tenant
+#     @account = Account.find_by(subdomain: request.headers['X-Original-Host'])
+
+#   set_current_tenant(@account)
+# rescue ActiveRecord::RecordNotFound
+#   render json: { error: 'Invalid tenant' }, status: :not_found
+# end
+
+
+
+
+
+
+# def set_tenant
+#   if current_user.present? && current_user.account.present?
+#     set_current_tenant(current_user.account)
+#   else
+#     Rails.logger.debug "No tenant or current_user found"
+#     # Optionally, handle cases where no tenant is set
+#     raise ActsAsTenant::Errors::NoTenantSet
+#   end
+# end
+
   def update_last_activity
     if current_user.instance_of?(Admin)
       current_user.update_column(:last_activity_active, Time.now.strftime('%Y-%m-%d %I:%M:%S %p'))

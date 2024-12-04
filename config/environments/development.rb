@@ -8,23 +8,44 @@ Rails.application.configure do
   # since you don't have to restart the web server when you make code changes.
 
   Rails.application.routes.default_url_options[:host] = 'localhost:4000'
-  # config.action_cable.url = "ws://localhost:4000/cable"
-#   config.action_mailer.delivery_method = :smtp
-#   config.action_mailer.raise_delivery_errors = true
+  # Rails.application.routes.default_url_options[:host] = 'https://74jp5ccr-5173.uks1.devtunnels.ms/'
+  config.action_cable.url = "ws://localhost:4000/cable"
+  config.action_mailer.default_url_options = { host: 'http://localhost:4000' }
 
-# config.action_mailer.smtp_settings = {
-#   :user_name => ENV['MAIL_TRAP_USERNAME'],
-#   :password => ENV['MAIL_TRAP_PASSWORD'],
-#   :address => 'live.smtp.mailtrap.io',
-#   :domain => ENV['MAIL_TRAP_DOMAIN'],
-#   :port => '587',
-#   :authentication => :login,
 
-#   :enable_starttls_auto => true   # Enable TLS
 
-# }
-  config.enable_reloading = true
+
+
+
+
+  # MAIL_TRAP_USERNAME = api
+  # MAIL_TRAP_DOMAIN = aitechsent.net
+  # MAIL_TRAP_PASSWORD = f17620673c51e537ef268dea49025da8
+  
+
   config.action_mailer.perform_deliveries = true
+  config.action_mailer.raise_delivery_errors = true
+
+
+  # config.action_mailer.delivery_method = :smtp
+  # config.action_mailer.mailtrap_settings
+  config.action_mailer.delivery_method = :mailtrap
+  # config.action_mailer.raise_delivery_errors = true
+  # 
+  
+  config.action_mailer.mailtrap_settings= {
+  # :user_name => ENV['MAIL_TRAP_USERNAME'],
+  # :password => ENV['MAIL_TRAP_PASSWORD'],
+  # :address => 'live.smtp.mailtrap.io',
+  # :domain => 'aitechsent.net',
+  # :port => '587',
+  # :authentication => :plain,
+
+  # :enable_starttls_auto => true   
+  api_key: 'f17620673c51e537ef268dea49025da8',
+}
+  config.enable_reloading = true
+  # config.action_mailer.perform_deliveries = true
   # Do not eager load code on boot.
   config.eager_load = false
 
@@ -51,8 +72,12 @@ Rails.application.configure do
   end
   config.active_job.queue_adapter = :sidekiq
 
+  # Add this configuration
+config.action_mailer.asset_host = 'http://localhost:4000'
+config.active_storage.service_url_host = 'http://localhost:4000'
+
   # Store uploaded files on the local file system (see config/storage.yml for options).
-  config.active_storage.service = :amazon 
+  config.active_storage.service = :local
 
   # Don't care if the mailer can't send.
   config.action_mailer.raise_delivery_errors = false
@@ -78,7 +103,7 @@ Rails.application.configure do
   config.active_job.verbose_enqueue_logs = true
 
   # Suppress logger output for asset requests.
-  config.assets.quiet = true
+  # config.assets.quiet = true
 # config.active_job.queue_adapter = :sidekiq
   # Raises error for missing translations.
   # config.i18n.raise_on_missing_translations = true
@@ -86,7 +111,11 @@ Rails.application.configure do
   # config.action_view.annotate_rendered_view_with_filenames = true
 # config.hosts << "c5b2-102-68-79-197.ngrok-free.app"
   # Uncomment if you wish to allow Action Cable access from any origin.
-  # config.action_cable.disable_request_forgery_protection = true
+  config.action_cable.disable_request_forgery_protection = true
+  config.action_cable.allowed_request_origins = [
+    'http://localhost:5173',
+    'http://localhost:3000',
+  ]
 
   # Raise error when a before_action's only/except options reference missing actions
   config.action_controller.raise_on_missing_callback_actions = true

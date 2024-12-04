@@ -1,12 +1,32 @@
 class ApplicationController < ActionController::Base
     include ActionController::Cookies
-
+    set_current_tenant_through_filter
+before_action :set_tenant
     skip_before_action :verify_authenticity_token
 
     helper_method :current_user, :current_admin, :current_service_provider,
-     :current_customer, :current_store_manager
+     :current_customer, :current_store_manager, :current_sys_admin
 
+     
 
+     
+
+     def set_tenant
+    
+      @account = Account.find_by(subdomain: request.headers['X-Original-Host'])
+      ActsAsTenant.current_tenant = @account
+      # @account = Account.find_by(subdomain: request.headers['X-Original-Host']
+      # )
+  
+      if @account
+        ActsAsTenant.current_tenant = @account
+      else
+        # Handle the case where the account is not found
+        render json: { error: 'Tenant not found' }, status: :not_found
+      end
+
+      Rails.logger.info "My Current Tenant: #{ActsAsTenant.current_tenant.inspect}"
+    end
 
 
 
@@ -63,6 +83,48 @@ def current_store_manager
     end
   end
 end
+
+
+
+
+
+
+
+def current_sys_admin
+  sys_admin_token = cookies.encrypted.signed[:jwt_sys_admin]
+  if sys_admin_token 
+    begin
+
+     
+
+
+
+      if sys_admin_token
+        decoded_sys_admin = JWT.decode(sys_admin_token, ENV['JWT_SECRET'], true, algorithm: 'HS256')
+        sys_admin_id = decoded_sys_admin[0]['admin_id']
+        
+        @current_sys_admin = SystemAdmin.find_by(id: sys_admin_id)
+        
+        return  @current_sys_admin if  @current_sys_admin
+      end
+
+
+
+     
+
+
+
+      # Rails.logger.info "Enqueuing SomeWorker with params: #{safe_params}"
+      # CurrentUserWorker.perform_async(safe_params)
+    rescue JWT::DecodeError, JWT::ExpiredSignature => e
+      Rails.logger.error "JWT Decode Error: #{e}"
+      render json: { error: 'Unauthorized' }, status: :unauthorized
+    end
+  end
+  
+  
+end
+
 
 
 def current_customer
@@ -128,69 +190,50 @@ end
 
 
 
-    def current_user
-      @current_user ||= begin
-      token = cookies.encrypted.signed[:jwt]
-      
-      # service_provider_token = cookies.signed[:service_provider_jwt]
-      
-
-        if  token  
-          begin
-
-
-            # if service_provider_token
-            #   decoded_service_provider = JWT.decode(service_provider_token, ENV['JWT_SECRET'], true, algorithm: 'HS256')
-            #   service_provider_id = decoded_service_provider[0]['service_provider_id']
-            #   @current_service_provider = ServiceProvider.find_by(id: service_provider_id)
-            #   return @current_service_provider if @current_service_provider
-            # end
-
-
-
-
-
-
-
-            if token
-              decoded_token = JWT.decode(token, ENV['JWT_SECRET'], true, algorithm: 'HS256')
-              admin_id = decoded_token[0]['admin_id']
-
-              @current_admin = Admin.find_by(id: admin_id)
-              return @current_admin if @current_admin
-            end
-
-            # Rails.logger.info "Enqueuing SomeWorker with params: #{safe_params}"
-            # CurrentUserWorker.perform_async(safe_params)
-          rescue JWT::DecodeError, JWT::ExpiredSignature => e
-            Rails.logger.error "JWT Decode Error: #{e}"
-            render json: { error: 'Unauthorized' }, status: :unauthorized
-          end
-        end
-  
-        if admin_id = session[:admin_id]
-          @current_admin = Admin.find_by(id: admin_id)
-          return @current_admin if @current_admin
-        end
-  
-        nil
-      end
-    end
+    
   
     def current_admin
       @current_admin ||= Admin.find_by(id: session[:admin_id])
     end
   
+
+
+
+    def current_user
+      @current_user ||= begin
+        token = cookies.encrypted.signed[:jwt]
+        if token  
+          begin
+            decoded_token = JWT.decode(token, ENV['JWT_SECRET'], true, algorithm: 'HS256')
+            admin_id = decoded_token[0]['admin_id']
+            @current_admin = Admin.find_by(id: admin_id)
+            return @current_admin if @current_admin
+          rescue JWT::DecodeError, JWT::ExpiredSignature => e
+            Rails.logger.error "JWT Decode Error: #{e}"
+            render json: { error: 'Unauthorized' }, status: :unauthorized
+          end
+        end
+        nil
+      end
+    end
     # current_service_provider,
     #  :current_customer, :current_store_manager
 
 
-def current_customer_ability
-if current_customer.present?
-  @current_ability ||= CustomerAbility.new(current_customer)
-else
-  raise CanCan::AccessDenied
-end
+# def current_customer_ability
+# if current_customer.present?
+#   @current_ability ||= CustomerAbility.new(current_customer,current_user )
+# else
+#   raise CanCan::AccessDenied
+# end
+# end
+
+def current_sys_admin_ability
+  if current_sys_admin.present?
+    @current_ability ||= Ability.new(current_service_provider)
+  else
+    raise CanCan::AccessDenied
+  end
 end
 
 

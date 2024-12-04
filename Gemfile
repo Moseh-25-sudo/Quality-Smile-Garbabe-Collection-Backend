@@ -6,12 +6,11 @@ ruby "3.2.1"
 gem "rails", "~> 7.1.3", ">= 7.1.3.2"
 
 # The original asset pipeline for Rails [https://github.com/rails/sprockets-rails]
-gem "sprockets-rails"
+# gem "sprockets-rails"
 gem "auto_increment"
 gem 'onesignal', '~> 1.0.1'
 gem 'twilio-ruby', '~> 7.2.0'
 gem 'rack-cors'
-gem "image_processing", ">= 1.2"
 gem "aws-sdk-s3", require: false
 
 # Use postgresql as the database for Active Record
@@ -25,10 +24,10 @@ gem "puma", ">= 5.0"
 gem "importmap-rails"
 
 # Hotwire's SPA-like page accelerator [https://turbo.hotwired.dev]
-gem "turbo-rails"
+# gem "turbo-rails"
 
 # Hotwire's modest JavaScript framework [https://stimulus.hotwired.dev]
-gem "stimulus-rails"
+# gem "stimulus-rails"
 
 # Build JSON APIs with ease [https://github.com/rails/jbuilder]
 gem "jbuilder"
@@ -53,9 +52,8 @@ gem "tzinfo-data", platforms: %i[ windows jruby ]
 gem "bootsnap", require: false
 gem 'securerandom'
 # Use Active Storage variants [https://guides.rubyonrails.org/active_storage_overview.html#transforming-images]
-# gem "image_processing", "~> 1.2"
+gem "image_processing", "~> 1.2"
 gem 'net-http', '~> 0.4.1'
-
 
 group :development, :test do
   # See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem
@@ -77,16 +75,35 @@ group :development do
   # gem "spring"
 end
 
-# Gemfile
-gem 'dotenv-rails', groups: [:development, :test]
 
 
+
+# Move dotenv-rails out of the development/test group
+gem 'dotenv-rails'
+
+group :development, :test do
+  # other development gems...
+end
+
+
+
+
+
+
+
+
+
+gem 'acts_as_tenant'
 gem 'cancancan'
 gem 'mailtrap'
 
 gem 'jwt'
 gem 'webauthn'
 
+
+
+# Use hiredis to get better performance than the "redis" gem
+gem 'hiredis'
 
 group :test do
   # Use system testing [https://guides.rubyonrails.org/testing.html#system-testing]

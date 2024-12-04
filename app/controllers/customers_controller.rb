@@ -4,18 +4,66 @@ class CustomersController < ApplicationController
   # before_action :authenticate_customer, except: [:index, :login, :verify_otp, :logout]
   # before_action :current_customer, except: [:index, :create, :update, :destroy, :login, :verify_otp ]
       # before_action :current_user, except: [:confirm_bag, :confirm_request]
+      # set_current_tenant_through_filter
 
-
-      before_action :update_last_activity, except: [:logout, :login, :verify_otp, :confirm_bag, :confirm_request, 
+      before_action :update_last_activity, except: [:logout, :login, :verify_otp,
+       :confirm_bag, :confirm_request, 
     ]
 
-        load_and_authorize_resource except: [:verify_otp,  :login, :logout, :confirm_bag, :confirm_request]
+    # before_action :set_tenant 
+
+        load_and_authorize_resource except: [:verify_otp,  :login, 
+        :logout, :confirm_bag, :confirm_request, :my_current_customer,
+        :get_customer_code, :get_my_customer_code, :get_current_customer
+      ]
 
 $LOAD_PATH.unshift(File.join(File.dirname(__FILE__), '..', 'lib'))
 require 'message_template'
   require "twilio-ruby"
 
 
+
+  # def set_tenant
+  #   @account = Account.find_by(subdomain: request.headers['X-Original-Host'])
+  
+    
+  #   if @account
+  #     ActsAsTenant.current_tenant = @account
+  #     # set_current_tenant(@account)
+  #   else
+  #     # Handle the case where the account is not found
+  #     render json: { error: 'Tenant not found' }, status: :not_found
+  #   end
+ 
+  # end
+
+
+
+
+
+
+   
+  # def set_tenant
+  #   random_name = "Tenant-#{SecureRandom.hex(4)}"
+  #   @account = Account.find_or_create_by(domain:request.domain, subdomain: request.subdomain, name: random_name)
+      
+  #   set_current_tenant(@account)
+   
+  #  end
+
+
+
+
+
+  # def set_tenant
+  #   if current_user.present? && current_user.account.present?
+  #     set_current_tenant(current_user.account)
+  #   else
+  #     Rails.logger.debug "No tenant or current_user found"
+  #     # Optionally, handle cases where no tenant is set
+  #     raise ActsAsTenant::Errors::NoTenantSet
+  #   end
+  # end
   
   # GET /customers or /customers.json
   def index
@@ -91,6 +139,13 @@ end
 
 
 
+def get_current_customer
+  if current_customer
+    render json: current_customer, status: :ok
+  else
+    render json: {error: 'no customer logged in'}, status: :unauthorized
+  end
+end
 
 
 
@@ -99,7 +154,8 @@ end
 
 
   def login
-    @customer = Customer.find_by(customer_code: params[:customer_code]) || Customer.find_by(customer_code: params[:my_customer_code
+    @customer = Customer.find_by(customer_code:
+     params[:customer_code]) || Customer.find_by(customer_code: params[:my_customer_code
   ])
 
     if @customer
@@ -119,7 +175,8 @@ end
       end
       else
         token = generate_token(customer_id:  @customer.id)
-      cookies.encrypted.signed[:customer_jwt] = { value: token, httponly: true, secure: true , exp: 24.hours.from_now.to_i , sameSite: 'strict'}
+      cookies.encrypted.signed[:customer_jwt] = { value: token, httponly: true,
+       secure: true , exp: 24.hours.from_now.to_i , }
       end
       
       
@@ -151,7 +208,7 @@ end
 
   def create
     @customer = Customer.new(customer_params)
-      if @customer.save
+      if @customer.valid?
           # @prefix_and_digits = Admin.prefix_and_digits.first
           @prefix_and_digits = CustomerSetting.first
 if  @prefix_and_digits.present?
@@ -209,25 +266,43 @@ end
 
 
   def confirm_bag
-    if  current_customer.update(bag_confirmed: true,  confirmation_date: Time.now.strftime('%Y-%m-%d %I:%M:%S %p'))
-      
-      formatted_time = current_customer.confirmation_date.strftime('%Y-%m-%d %I:%M:%S %p')
+    customer_confirm = current_customer.with_lock do
+      current_customer.update(
+        bag_confirmed: true, 
+        confirmation_date: Time.current.strftime('%Y-%m-%d %I:%M:%S %p'),
+        confirm_request: false,
+        total_confirmations: (current_customer.total_confirmations || 0) + 1
+      )
+    end
 
-      render json: { message: 'Bag confirmed successfully.', confirmation_date: formatted_time }, status: :ok
+    if customer_confirm
+      ActionCable.server.broadcast "requests_channel", 
+        {request: CustomerSerializer.new(current_customer).as_json}
+      render json: { message: current_customer.total_confirmations }, status: :ok
     else
       render json: { error: 'Failed to confirm bag.' }, status: :unprocessable_entity
     end
-
-
   end
 
 
 
   def confirm_request
-    if current_customer.update(confirm_request: true, request_date: Time.now.strftime('%Y-%m-%d %I:%M:%S %p'), bag_confirmed: false) 
-      render json: { message: 'Bag confirmed successfully.' }, status: :ok
+    customer_request = current_customer.with_lock do
+      current_customer.update(
+        confirm_request: true, 
+        request_date: Time.now.strftime('%Y-%m-%d %I:%M:%S %p'),
+        bag_confirmed: false,
+        total_requests: (current_customer.total_requests || 0) + 1
+      )
+    end
+
+    if customer_request 
+      Rails.logger.info "customer_request=>#{customer_request}" 
+      ActionCable.server.broadcast "requests_channel", 
+        {request: CustomerSerializer.new(current_customer).as_json}
+      render json: { message: current_customer.total_requests }, status: :ok
     else
-      render json: { error: 'Failed to confirm bag.' }, status: :unprocessable_entity
+      render json: { error: 'Failed to confirm request.' }, status: :unprocessable_entity
     end
   end
 
@@ -242,6 +317,24 @@ end
 
    head :no_content
   end
+
+  def stats
+    total_stats = {
+      total_requests: Customer.sum(:total_requests),
+      total_confirmations: Customer.sum(:total_confirmations)
+    }
+
+    customer_stats = Customer.select(:id, :name, :email, :total_requests, :total_confirmations)
+                           .where.not(total_requests: nil)
+                           .or(Customer.where.not(total_confirmations: nil))
+                           .order(total_requests: :desc)
+
+    render json: {
+      total_stats: total_stats,
+      customer_stats: customer_stats
+    }
+  end
+
   private
     # Use callbacks to share common setup or constraints between actions.
     def set_customer

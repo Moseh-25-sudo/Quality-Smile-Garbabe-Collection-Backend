@@ -1,16 +1,28 @@
 class Ability
   include CanCan::Ability
-
+  
   def initialize(admin)
     return unless admin.present?
 
-    Rails.logger.info "Initializing abilities for admin: #{admin.inspect}"
-    assign_permissions_based_on_flags(admin)
+    Rails.logger.info "Initializing abilities for  admin: #{admin.inspect}"
+    
+
+
+    
+
+
+    
+    
     if admin.role == 'super_administrator'
       can :manage, :all
       can :read, :all
       
-# b1376dbf7ba88ae3
+
+      
+    elsif admin.role == 'system_administrator'
+    can :manage, :all
+    can :read, :all
+
 
       Rails.logger.info "Super administrator can manage and read all"
     elsif admin.role == 'administrator'  
@@ -38,6 +50,9 @@ class Ability
       elsif admin.role == 'customer'
         can :manage, CalendarEvent  
         can :read, CalendarEvent
+
+
+        assign_permissions_based_on_flags(admin)
 
     #     cannot :read, :get_settings_for_store_manager 
     # cannot :read, :get_settings_for_store 

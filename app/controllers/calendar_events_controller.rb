@@ -1,7 +1,8 @@
 class CalendarEventsController < ApplicationController
-  before_action :set_calendar_event, only: %i[ show edit update destroy ]
+  # before_action :set_calendar_event, only: %i[ show edit update destroy ]
+  # before_action :set_tenant 
 
-
+  # set_current_tenant_through_filter
   load_and_authorize_resource
 require 'rest-client'
 require 'json'
@@ -10,9 +11,33 @@ require 'onesignal'
 
 
 
+def set_tenant
+  @account = Account.find_by(subdomain: request.headers['X-Original-Host'])
 
 
+  set_current_tenant(@account)
+rescue ActiveRecord::RecordNotFound
+  render json: { error: 'Invalid tenant' }, status: :not_found
+end
 
+   
+# def set_tenant
+#   random_name = "Tenant-#{SecureRandom.hex(4)}"
+#   @account = Account.find_or_create_by(domain:request.domain, subdomain: request.subdomain, name: random_name)
+  
+#   set_current_tenant(current_user.account)
+ 
+#  end
+
+# def set_tenant
+#   if current_user.present? && current_user.account.present?
+#     set_current_tenant(current_user.account)
+#   else
+#     Rails.logger.debug "No tenant or current_user found"
+#     # Optionally, handle cases where no tenant is set
+#     raise ActsAsTenant::Errors::NoTenantSet
+#   end
+# end
 
 
   def index
@@ -74,27 +99,31 @@ require 'onesignal'
   
 
   def update
-      if @calendar_event.update(calendar_event_params)
-        @fcm_token = current_user.fcm_token
 
+    calendar_event = set_calendar_event
+    
+      if calendar_event.update(calendar_event_params)
+        @fcm_token = current_user.fcm_token
+        render json: calendar_event , status: :ok
         # start_in_minutes: params[:start_in_minutes],
         # start_in_hours: params[:start_in_hours]
         
         calendar_settings = MyCalendarSetting.first
         in_minutes = calendar_settings.start_in_minutes
         in_hours = calendar_settings.start_in_hours
-  
+#   Rails.logger.info "in_hours#{in_hours}"
+# Rails.logger.info  "in_minutes#{in_minutes}"
+
         # FcmNotificationJob.perform_now(@calendar_event.id, @fcm_token)
-        notification_time_minutes = @calendar_event.start.in_time_zone - in_minutes.to_i.minutes
-        notification_time_hrs = @calendar_event.start.in_time_zone - in_hours.to_i.hours
+        notification_time_minutes = calendar_event.start.in_time_zone - in_minutes.to_i.minutes
+        notification_time_hrs = calendar_event.start.in_time_zone - in_hours.to_i.hours 
+
   
-  
-        FcmNotificationJob.set(wait_until:notification_time_hrs).perform_later(@calendar_event.id, @fcm_token)
-        FcmNotificationJob.set(wait_until:notification_time_minutes).perform_later(@calendar_event.id, @fcm_token)
-  
-         render json: @calendar_event , status: :ok
+        FcmNotificationJob.set(wait_until:notification_time_hrs).perform_later(calendar_event.id, @fcm_token) if in_hours.present?
+        FcmNotificationJob.set(wait_until:notification_time_minutes).perform_later(calendar_event.id, @fcm_token) if in_minutes.present?
+         
       else
-        render json: @calendar_event.errors, status: :unprocessable_entity 
+        render json: calendar_event.errors, status: :unprocessable_entity 
       end
     
   end
